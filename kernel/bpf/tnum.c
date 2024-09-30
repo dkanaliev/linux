@@ -157,6 +157,38 @@ struct tnum tnum_cast(struct tnum a, u8 size)
 	return a;
 }
 
+struct tnum tnum_scast(struct tnum a, u8 size)
+{
+	int s = size * 8 - 1;
+	u64 sign_mask, higher_bits, new_value, new_mask;
+
+	sign_mask = 1ULL << s;
+
+	if (s >= 63) {
+		higher_bits = 0;
+	} else {
+		higher_bits = ~((1ULL << (s + 1)) - 1);
+	}
+
+	new_value = a.value;
+	new_mask = a.mask;
+
+	if (a.mask & sign_mask) {
+		new_value &= (1ULL << (s + 1)) - 1;
+		new_mask |= higher_bits;
+	} else {
+		if (a.value & sign_mask) {
+			new_value |= higher_bits;
+			new_mask &= ~higher_bits;
+		} else {
+			new_value &= (1ULL << (s + 1)) - 1;
+			new_mask &= ~higher_bits;
+		}
+	}
+
+	return TNUM(new_value, new_mask);
+}
+
 bool tnum_is_aligned(struct tnum a, u64 size)
 {
 	if (!size)
@@ -211,3 +243,4 @@ struct tnum tnum_const_subreg(struct tnum a, u32 value)
 {
 	return tnum_with_subreg(a, tnum_const(value));
 }
+
