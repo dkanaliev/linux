@@ -6286,16 +6286,12 @@ static void set_sext64_default_val(struct bpf_reg_state *reg, int size)
 	reg->var_off = tnum_unknown;
 }
 
-
 static void coerce_reg_to_size_sx(struct bpf_reg_state *reg, int size)
 {
-	s64 smin, smax;
-	u64 umax, umin;
-
 	reg->var_off = tnum_scast(reg->var_off, size);
 
-	reg->smin_value = reg->var_off.value;
-	reg->smax_value = reg->var_off.value | reg->var_off.mask;
+	reg->smin_value = (s64)(reg->var_off.value & ~reg->var_off.mask);
+	reg->smax_value = (s64)(reg->var_off.value | reg->var_off.mask);
 
 	reg->umin_value = (u64)reg->smin_value;
 	reg->umax_value = (u64)reg->smax_value;
@@ -6305,10 +6301,12 @@ static void coerce_reg_to_size_sx(struct bpf_reg_state *reg, int size)
 		reg->s32_max_value = (s32)reg->smax_value;
 		reg->u32_min_value = (u32)reg->umin_value;
 		reg->u32_max_value = (u32)reg->umax_value;
+	} else {
+		reg->s32_min_value = S32_MIN;
+		reg->s32_max_value = S32_MAX;
+		reg->u32_min_value = 0;
+		reg->u32_max_value = U32_MAX;
 	}
-
-	if (size < 4)
-		__mark_reg32_unbounded(reg);
 
 	reg_bounds_sync(reg);
 }
